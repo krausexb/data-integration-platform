@@ -10,10 +10,13 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import { ApiSqsIntegration } from '../../constructs/api-sqs-integration';
 import { Api } from '../../constructs/api';
 
+export interface ControlPlaneProps {
+  cloudwatchLogRetentionDays: number;
+}
 
 export class CdkStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+  constructor(scope: Construct, id: string, props: ControlPlaneProps) {
+    super(scope, id);
 
     /* 
     Main DynamoDB Table storing Project Data. TODO: Currently the table schema does not support pooled tenant separation
@@ -60,7 +63,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/createResource'),
       handler: 'main.lambda_handler',
-      logRetention: 14,
+      logRetention: props.cloudwatchLogRetentionDays,
       environment: {
         'TEMPLATE_URL': 'https://' + 'cloudformation-templates-' + this.account + '.s3.eu-central-1.amazonaws.com/template.yaml',
         'TABLE_NAME': resourceTable.tableName
@@ -78,7 +81,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/updateJobStatus'),
       handler: 'main.lambda_handler',
-      logRetention: 14,
+      logRetention: props.cloudwatchLogRetentionDays,
       environment: {
         'TABLE_NAME': resourceTable.tableName
       }
@@ -109,7 +112,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/listResources'),
       handler: 'main.lambda_handler',
-      logRetention: 14,
+      logRetention: props.cloudwatchLogRetentionDays,
       environment: {
         'TABLE_NAME': resourceTable.tableName
       }
@@ -122,7 +125,7 @@ export class CdkStack extends cdk.Stack {
     const updateResourceHandler = new lambda.Function(this, 'updateResourceHandler', {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/updateResource'),
-      logRetention: 14,
+      logRetention: props.cloudwatchLogRetentionDays,
       handler: 'main.lambda_handler'
     });
 
@@ -133,7 +136,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/deleteResource'),
       handler: 'main.lambda_handler',
-      logRetention: 14,
+      logRetention: props.cloudwatchLogRetentionDays,
       environment: {
         'TABLE_NAME': resourceTable.tableName
       }
