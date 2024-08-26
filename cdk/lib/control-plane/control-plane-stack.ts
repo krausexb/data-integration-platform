@@ -60,6 +60,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/createResource'),
       handler: 'main.lambda_handler',
+      logRetention: 14,
       environment: {
         'TEMPLATE_URL': 'https://' + 'cloudformation-templates-' + this.account + '.s3.eu-central-1.amazonaws.com/template.yaml',
         'TABLE_NAME': resourceTable.tableName
@@ -77,6 +78,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/updateJobStatus'),
       handler: 'main.lambda_handler',
+      logRetention: 14,
       environment: {
         'TABLE_NAME': resourceTable.tableName
       }
@@ -107,6 +109,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/listResources'),
       handler: 'main.lambda_handler',
+      logRetention: 14,
       environment: {
         'TABLE_NAME': resourceTable.tableName
       }
@@ -119,6 +122,7 @@ export class CdkStack extends cdk.Stack {
     const updateResourceHandler = new lambda.Function(this, 'updateResourceHandler', {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/updateResource'),
+      logRetention: 14,
       handler: 'main.lambda_handler'
     });
 
@@ -129,6 +133,7 @@ export class CdkStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset('code/control-plane/deleteResource'),
       handler: 'main.lambda_handler',
+      logRetention: 14,
       environment: {
         'TABLE_NAME': resourceTable.tableName
       }

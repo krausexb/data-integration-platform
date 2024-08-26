@@ -100,6 +100,7 @@ export class DataPlane extends cdk.Stack {
       code: lambda.Code.fromAsset('code/data-plane/poller'),
       handler: 'main.lambda_handler',
       timeout: cdk.Duration.seconds(60),
+      logRetention: 14,
       role: lambdaExecutionRole,
       environment: {
         'SCHEDULE_INTERVAL': PollSchedule.valueAsString,
