@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template to create all required resources in the tenant account'
+
+Parameters:
+  SecretName:
+    Type: String
+    Description: Name of the secret that holds the api key for the external api
+    Default: 'ExternalAPIKeyName'
+  SecretValue:
+    Type: String
+    Description: Value of the api key
+  SecretDescription:
+    Type: String
+    Description: Description of the secret
+    Default: 'API Key for calling the external API'
+  RoleName:
+    Type: String
+    Description: Name of the IAM Role
+    Default: 'MyDataIntegrationPlatformAccessRole'
+  CrossAccountRoleArn:
+    Type: String
+    Description: ARN of the Role from the central platform. Update this Stack with the value after creating the Project in the central platform (optional)
+    Default: ''
+  StreamName:
+    Type: String
+    Description: Name of the Kinesis Data Stream
+    Default: 'MyKinesisDataStream'
+  KinesisStreamRetentionPeriodHours:
+    Type: Number
+    Description: The number of hours for the data records that are stored in shards to remain accessible.
+    Default: 24
+
+Conditions:
+  HasCrossAccountTrust: !Not [!Equals [!Ref CrossAccountRoleArn, '']]
+
+Resources:
+  KinesisStream:
+    Type: 'AWS::Kinesis::Stream'
+    Properties:
+      Name: !Ref StreamName
+      RetentionPeriodHours: !Ref KinesisStreamRetentionPeriodHours
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+
+  APISecret:
+    Type: 'AWS::SecretsManager::Secret'
+    Properties:
+      Name: !Ref SecretName
+      Description: !Ref SecretDescription
+      SecretString: !Sub '{"username": "${SecretValue}"}'
+
+  MyIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Ref RoleName
+      AssumeRolePolicyDocument:
+        Fn::If:
+          - HasCrossAccountTrust
+          - Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Principal:
+                  AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+                Action: sts:AssumeRole
+              - Effect: Allow
+                Principal:
+                  AWS: !Ref CrossAccountRoleArn
+                Action: sts:AssumeRole
+          - Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Principal:
+                  AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+                Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SecretAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'secretsmanager:GetSecretValue'
+                  - 'secretsmanager:DescribeSecret'
+                Resource: !Ref APISecret
+        - PolicyName: KinesisWritePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kinesis:PutRecord'
+                  - 'kinesis:PutRecords'
+                Resource: !GetAtt KinesisStream.Arn
+
+Outputs:
+  SecretARN:
+    Description: ARN of the created secret
+    Value: !Ref APISecret
+  RoleARN:
+    Description: ARN of the created role
+    Value: !GetAtt MyIAMRole.Arn
+  KinesisStreamARN:
+    Description: ARN of the created Kinesis Data Stream
+    Value: !GetAtt KinesisStream.Arn
