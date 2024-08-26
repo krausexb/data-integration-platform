@@ -4,9 +4,13 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as scheduler from 'aws-cdk-lib/aws-scheduler'
 
+export interface ControlPlaneProps {
+  cloudwatchLogRetentionDays: number;
+}
+
 export class DataPlane extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
-    super(scope, id, props);
+  constructor(scope: Construct, id: string, props: ControlPlaneProps) {
+    super(scope, id);
 
     /*
     CloudFormation Parameters that are used to pass project information during project creation from code/control-plane/createResource
@@ -100,6 +104,7 @@ export class DataPlane extends cdk.Stack {
       code: lambda.Code.fromAsset('code/data-plane/poller'),
       handler: 'main.lambda_handler',
       timeout: cdk.Duration.seconds(60),
+      logRetention: props.cloudwatchLogRetentionDays,
       role: lambdaExecutionRole,
       environment: {
         'SCHEDULE_INTERVAL': PollSchedule.valueAsString,
