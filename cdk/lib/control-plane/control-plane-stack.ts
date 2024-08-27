@@ -152,30 +152,8 @@ export class CdkStack extends cdk.Stack {
       entry: 'code/docs/app.js',
       timeout: cdk.Duration.seconds(30),
       bundling: {
-        // nodeModules: [
-        //   'swagger-ui-express',
-        //   'express'
-        // ],
       },
     });
-
-    // const swaggerUI = new lambda.Function(this, 'swaggerUI', {
-    //   runtime: lambda.Runtime.NODEJS_20_X,
-    //   timeout: cdk.Duration.seconds(30),
-    //   logRetention: props.cloudwatchLogRetentionDays,
-    //   handler: 'app.handler',
-    //   code: lambda.Code.fromAsset('code/docs/', {
-    //     bundling: {
-    //       image: lambda.Runtime.NODEJS_20_X.bundlingImage,
-    //       command: [
-    //         'bash', '-c',
-    //         'npm install && npm run build && cp -r node_modules dist/ && cp package.json dist/'
-    //       ]
-    //     }
-    //   })
-    //   //code: lambda.Code.fromAsset('code/docs/')
-    // });
-    swaggerUI.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));
 
     /* 
     Construct that provisions an API Gateway and sets up routes for the different handlers.
@@ -187,5 +165,20 @@ export class CdkStack extends cdk.Stack {
       updateResourceFunction: updateResourceHandler,
       swaggerUIFunction: swaggerUI
     });
+
+    const GetApiGatewayExportPolicy = new iam.Policy(this, 'GetApiGatewayExportPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'apigateway:GET'
+          ],
+          resources: [
+            'arn:aws:apigateway:' + this.region + '::/restapis/' + api.apigateway.restApiId + '/*'
+          ]
+        })
+      ]
+    });
+    swaggerUI.role?.attachInlinePolicy(GetApiGatewayExportPolicy);
   }
 }
