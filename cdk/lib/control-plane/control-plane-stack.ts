@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as eventsources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as eventtargets from 'aws-cdk-lib/aws-events-targets';
@@ -145,6 +146,15 @@ export class CdkStack extends cdk.Stack {
     deleteResourceHandler.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));
     resourceTable.grantReadWriteData(deleteResourceHandler);
 
+    const swaggerUI = new lambdaNodejs.NodejsFunction(this, 'swaggerUI', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: 'code/docs/app.js',
+      timeout: cdk.Duration.seconds(30),
+      bundling: {
+      },
+    });
+
     /* 
     Construct that provisions an API Gateway and sets up routes for the different handlers.
     */ 
@@ -152,7 +162,23 @@ export class CdkStack extends cdk.Stack {
       listResourcesFunction: listResourcesHandler,
       createResourceIntegration: createProjectApiIntegration.integration,
       deleteResourceIntegration: deleteProjectApiIntegration.integration,
-      updateResourceFunction: updateResourceHandler
+      updateResourceFunction: updateResourceHandler,
+      swaggerUIFunction: swaggerUI
     });
+
+    const GetApiGatewayExportPolicy = new iam.Policy(this, 'GetApiGatewayExportPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: [
+            'apigateway:GET'
+          ],
+          resources: [
+            'arn:aws:apigateway:' + this.region + '::/restapis/' + api.apigateway.restApiId + '/*'
+          ]
+        })
+      ]
+    });
+    swaggerUI.role?.attachInlinePolicy(GetApiGatewayExportPolicy);
   }
 }
