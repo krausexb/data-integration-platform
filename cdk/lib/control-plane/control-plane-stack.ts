@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as eventsources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as eventtargets from 'aws-cdk-lib/aws-events-targets';
@@ -145,6 +146,37 @@ export class CdkStack extends cdk.Stack {
     deleteResourceHandler.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));
     resourceTable.grantReadWriteData(deleteResourceHandler);
 
+    const swaggerUI = new lambdaNodejs.NodejsFunction(this, 'swaggerUI', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: 'code/docs/app.js',
+      timeout: cdk.Duration.seconds(30),
+      bundling: {
+        // nodeModules: [
+        //   'swagger-ui-express',
+        //   'express'
+        // ],
+      },
+    });
+
+    // const swaggerUI = new lambda.Function(this, 'swaggerUI', {
+    //   runtime: lambda.Runtime.NODEJS_20_X,
+    //   timeout: cdk.Duration.seconds(30),
+    //   logRetention: props.cloudwatchLogRetentionDays,
+    //   handler: 'app.handler',
+    //   code: lambda.Code.fromAsset('code/docs/', {
+    //     bundling: {
+    //       image: lambda.Runtime.NODEJS_20_X.bundlingImage,
+    //       command: [
+    //         'bash', '-c',
+    //         'npm install && npm run build && cp -r node_modules dist/ && cp package.json dist/'
+    //       ]
+    //     }
+    //   })
+    //   //code: lambda.Code.fromAsset('code/docs/')
+    // });
+    swaggerUI.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));
+
     /* 
     Construct that provisions an API Gateway and sets up routes for the different handlers.
     */ 
@@ -152,7 +184,8 @@ export class CdkStack extends cdk.Stack {
       listResourcesFunction: listResourcesHandler,
       createResourceIntegration: createProjectApiIntegration.integration,
       deleteResourceIntegration: deleteProjectApiIntegration.integration,
-      updateResourceFunction: updateResourceHandler
+      updateResourceFunction: updateResourceHandler,
+      swaggerUIFunction: swaggerUI
     });
   }
 }

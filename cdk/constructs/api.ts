@@ -5,6 +5,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 export interface ApiProps {
   listResourcesFunction: lambda.IFunction;
   updateResourceFunction: lambda.IFunction;
+  swaggerUIFunction: lambda.IFunction;
   createResourceIntegration: apigateway.AwsIntegration;
   deleteResourceIntegration: apigateway.AwsIntegration;
 }
@@ -20,6 +21,13 @@ export class Api extends Construct {
         restApiName: 'Control Plane Service',
         description: 'This service handles CRUD operations for resources.'
         });
+
+        const docs = this.apigateway.root.addResource('docs');
+        docs.addMethod('GET', new apigateway.LambdaIntegration(props.swaggerUIFunction))
+        docs.addProxy({
+            anyMethod: true,
+            defaultIntegration: new apigateway.LambdaIntegration(props.swaggerUIFunction)
+        })
 
         const controlPlane = this.apigateway.root.addResource('api');
         
