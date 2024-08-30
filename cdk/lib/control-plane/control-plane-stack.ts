@@ -76,6 +76,21 @@ export class CdkStack extends cdk.Stack {
     createResourceHandler.role?.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess'));
 
     /* 
+    Handler responsible for returning the status of the given createProject API call
+    */ 
+    const getJobStatusHandler = new lambda.Function(this, 'getJobStatusHandler', {
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset('code/control-plane/getJobStatus'),
+      handler: 'main.lambda_handler',
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+          'TABLE_NAME': resourceTable.tableName
+        },
+      logRetention: props.cloudwatchLogRetentionDays
+    });
+    resourceTable.grantReadData(getJobStatusHandler)
+
+    /* 
     Function is responsible for handling CloudFormation Status Events. Main use case is to update DynamoDB Table when a stack provisioning succeeded.
     */ 
     const updateJobStatus = new lambda.Function(this, 'updateJobStatus', {
@@ -161,9 +176,10 @@ export class CdkStack extends cdk.Stack {
     const api = new Api(this, 'api', {
       listResourcesFunction: listResourcesHandler,
       createResourceIntegration: createProjectApiIntegration.integration,
+      getJobStatusHandler: getJobStatusHandler,
       deleteResourceIntegration: deleteProjectApiIntegration.integration,
       updateResourceFunction: updateResourceHandler,
-      swaggerUIFunction: swaggerUI
+      swaggerUIFunction: swaggerUI,
     });
 
     const GetApiGatewayExportPolicy = new iam.Policy(this, 'GetApiGatewayExportPolicy', {
