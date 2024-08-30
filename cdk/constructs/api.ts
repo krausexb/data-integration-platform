@@ -7,6 +7,7 @@ export interface ApiProps {
   updateResourceFunction: lambda.IFunction;
   swaggerUIFunction: lambda.IFunction;
   createResourceIntegration: apigateway.AwsIntegration;
+  getJobStatusHandler: lambda.IFunction;
   deleteResourceIntegration: apigateway.AwsIntegration;
 }
 
@@ -31,6 +32,10 @@ export class Api extends Construct {
 
         const controlPlane = this.apigateway.root.addResource('api');
         
+        const job = controlPlane.addResource('job');
+        const jobWithId = job.addResource('{id}');
+        const jobStatus = jobWithId.addResource('status');
+
         const projects = controlPlane.addResource('projects');
         const listResources = projects.addResource('list');
         
@@ -74,6 +79,22 @@ export class Api extends Construct {
             "application/json": createProjectRequestModel,
         }
         });
+        jobStatus.addMethod('GET', new apigateway.LambdaIntegration(props.getJobStatusHandler), {
+        methodResponses: [
+            { statusCode: '200' },
+            { statusCode: '400' },
+            { statusCode: '500' }
+        ],
+        requestParameters: {
+            'method.request.path.id': true
+        },
+        requestValidator: new apigateway.RequestValidator(this, 'getJobStatusRequestValidator', {
+            restApi: this.apigateway,
+            validateRequestParameters: true,
+            validateRequestBody: false
+        }),
+        });
+
         deleteResource.addMethod('DELETE', props.deleteResourceIntegration, {
         methodResponses: [
             { statusCode: '200' },
